@@ -4,3 +4,4 @@ store.json
 node_modules/
 scrobbles.txt
 audio.txt
+.idea
