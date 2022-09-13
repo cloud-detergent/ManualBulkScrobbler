@@ -1,7 +1,4 @@
-/*
-
-*/
-import passwords from "./passwords.json";
+import passwords from "./passwords.json" assert { type: "json" };
 
 /***
  * Creates a Last.fm session and executes callback within that session
@@ -13,7 +10,7 @@ function authenticateSession(lfmApi, callback) {
         if (err) {
             console.log(err);
         }
-        lfmApi.setSessionCredentials(session.username, session.key);
+        lfmApi.setSessionCredentials(session.name, session.key);
         callback();
     });
 }
@@ -37,3 +34,5 @@ function scrobble(lfmApi, artist, track, dateTime) {
         console.log('Scrobbled:', scrobbles);
     });
 }
+
+export { authenticateSession, scrobble };
