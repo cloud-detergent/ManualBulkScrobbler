@@ -110,7 +110,12 @@ async function processQueue() {
                 }
                 else {
                     track = trackData[i].substring(delimIndex1 + 3, delimIndex2);
-                    datetime = new Date(trackData[i].substring(delimIndex2 + 3));
+                    let datetimeString = trackData[i].substring(delimIndex2 + 3).trim();
+                    datetime = new Date(datetimeString);
+
+                    if (isNaN(datetime.getTime())) {
+                        throw new Error(`'${datetimeString}' is considered to be an invalid string`);
+                    }
                 }
 
                 if (artist && track) {
