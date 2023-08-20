@@ -3,7 +3,6 @@
 
 import fs from 'fs';
 import path from 'path';
-import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { fileURLToPath } from 'url';
 import { parseExcludeTracks } from "./edit-helper.js";
@@ -34,7 +33,6 @@ function addToDateTime(date, hours, minutes=0, seconds=0) {
 }
 
 async function processQueue() {
-    const rl = readline.createInterface({ input, output });
     let file = process.argv[2];
 
     const __filename = fileURLToPath(import.meta.url);
@@ -117,8 +115,6 @@ async function processQueue() {
         }
 
     }
-
-    rl.close();
 }
 
 await processQueue();

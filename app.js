@@ -4,13 +4,11 @@
 import fs from 'fs';
 import path from 'path';
 import LastfmAPI from 'lastfmapi';
-import * as readline from 'node:readline/promises';
+import * as readline from 'node:readline';
 import { stdin as input, stdout as output } from 'node:process';
 import { fileURLToPath } from 'url';
-import passwords from "./passwords.json" assert { type: "json" };
 import { parseExcludeTracks } from "./edit-helper.js";
 import { authenticateSession, scrobble } from "./lastfm-helper.js";
-
 
 /*
 Start script checking input file,
@@ -30,12 +28,10 @@ Will scrobble new updates to Last.fm with api data from passwords.json:
 }
 */
 
-let lastfmAPI = new LastfmAPI({
-    'api_key': passwords.lastfm_api_key,
-    'secret': passwords.lastfm_secret
-});
-
 // start script with file from command `node app.js [/path/to/audio.txt]`
+
+let passwords = {};
+let lastfmAPI;
 
 const minuteInMs = 60000;
 const stdMinuteGap = 4;
@@ -50,39 +46,42 @@ function getTrackListString() {
     return list.join('\n');
 }
 
-async function trackListEditScrobbleMenu(rl) {
+function trackListEditScrobbleMenu(rl) {
     let list = getTrackListString();
     console.log(list, '\n\n');
 
-    const answer = await rl.question(`Y/n - scrobble, e - edit, q - quit :  `);
-    if (answer === '' || answer.toLowerCase() === 'y') {
-        console.log(`About to scrobble ${trackList.length} track(-s)`);
-        scrobbleTrackList();
-    }
-
-    if (answer.toLowerCase() === 'e') {
-        const excludeTracksAnswer = await rl.question(`Tracks to exclude: (e.g.: "1 2 3", "1-3"):  `);
-        let excludeTrackNumbers = parseExcludeTracks(excludeTracksAnswer, list.length); // '1-3 5 7' ; '2-9 3 7'
-
-        for (let i = excludeTrackNumbers.length - 1; i >= 0; i--) {
-            let delCnt = excludeTrackNumbers[i].end - excludeTrackNumbers[i].start + 1;
-            trackList.splice(excludeTrackNumbers[i].start, delCnt);
+	rl.question('Y/n - scrobble, q - quit: ', (answer) => {
+		console.log("what have we chosen? " + answer);
+        if (answer === '' || answer?.toLowerCase() === 'y') {
+            console.log(`About to scrobble ${trackList.length} track(-s)`);
+            scrobbleTrackList();
         }
 
-        await trackListEditScrobbleMenu(rl);
-    }
+        if (answer?.toLowerCase() === 'e') {
+            rl.question(`Tracks to exclude: (e.g.: "1 2 3", "1-3"):  `, (excludeTracksAnswer) => {
+                let excludeTrackNumbers = parseExcludeTracks(excludeTracksAnswer, list.length); // '1-3 5 7' ; '2-9 3 7' 
+            
+                for (let i = excludeTrackNumbers.length - 1; i >= 0; i--) {
+        	    let delCnt = excludeTrackNumbers[i].end - excludeTrackNumbers[i].start + 1;
+                    trackList.splice(excludeTrackNumbers[i].start, delCn);
+                }
+            
+                trackListEditScrobbleMenu(rl);
+            });
+        }
+	});
 }
 
 function scrobbleTrackList() {
     if (trackList && trackList.length > 0) {
-        authenticateSession(lastfmAPI, () => {
-            trackList.forEach(x => scrobble(lastfmAPI, x.artist, x.track, x.datetime));
+        authenticateSession(passwords, lastfmAPI, () => {
+            trackList.forEach(x => scrobble(passwords, lastfmAPI, x.artist, x.track, x.datetime));
             console.log(new Date().toLocaleString(), `scrobbled : ${trackList.length} tracks`);
         });
     }
 }
 
-async function processQueue() {
+function processQueue() {
     const rl = readline.createInterface({ input, output });
     let file = process.argv[2];
 
@@ -139,10 +138,30 @@ async function processQueue() {
             }
         }
 
-        await trackListEditScrobbleMenu(rl);
+//        trackListEditScrobbleMenu(rl);
+		
+		console.log(`About to scrobble ${trackList.length} track(-s)`);
+		scrobbleTrackList();
+
     }
 
     rl.close();
 }
 
-await processQueue();
+const passwordsPath = './passwords.json';
+
+if (fs.existsSync(passwordsPath)) {
+	passwords = JSON.parse(fs.readFileSync('./passwords.json'));
+}
+
+if (!passwords || !passwords.lastfm_api_key || !passwords.lastfm_secret) {
+	throw new Error('Last.fm credentials are not set properly. Please provide user, password, api key and secret in passwords.json file');
+}
+
+lastfmAPI = new LastfmAPI({
+    'api_key': passwords.lastfm_api_key,
+    'secret': passwords.lastfm_secret
+});
+
+processQueue();
+
